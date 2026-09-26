@@ -122,6 +122,18 @@ select {
   font-size: 0.82rem;
 }
 
+.scanflow-footer {
+  padding: 14px 4px 0;
+  text-align: center;
+  font-size: 0.82rem;
+}
+
+.scanflow-footer a {
+  color: var(--coffee);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .modal-backdrop {
   position: fixed;
   inset: 0;

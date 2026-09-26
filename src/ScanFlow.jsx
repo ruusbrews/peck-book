@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import BarcodeScanner from 'react-qr-barcode-scanner';
 import { SCENARIOS, STAGES } from './data/scenarios.js';
 import './ScanFlow.css';
@@ -124,6 +125,9 @@ function ScanFlow() {
 
               {scanError && <p className="inline-error">{scanError}</p>}
             </section>
+            <footer className="scanflow-footer">
+              <Link to="/admin">Open admin agent demo</Link>
+            </footer>
           </>
         )}
 

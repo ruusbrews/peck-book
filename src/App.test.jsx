@@ -25,4 +25,6 @@ test('default route renders the worker scan flow', () => {
   );
 
   expect(screen.getByText(/Scan a shipment barcode/i)).toBeDefined();
+  fireEvent.click(screen.getByRole('link', { name: 'Open admin agent demo' }));
+  expect(screen.getByRole('heading', { name: 'PeckTag Agent' })).toBeDefined();
 });
