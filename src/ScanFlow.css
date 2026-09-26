@@ -73,7 +73,7 @@ select {
 
 .scanner-stage {
   position: relative;
-  width: min(100%, 29dvh, 290px);
+  width: min(100%, 42dvh, 380px);
   height: min(54dvh, 520px);
   margin-inline: auto;
   overflow: hidden;
@@ -99,9 +99,9 @@ select {
 }
 
 .scan-frame {
-  /* The square takes about a quarter of the tall preview and stays anchored at its base. */
-  width: 48%;
-  aspect-ratio: 1;
+  /* A wide, shallow guide matches the barcode while keeping the full strip visible above it. */
+  width: 88%;
+  height: 25%;
   border: 3px solid rgba(255, 255, 255, 0.9);
   border-radius: 16px;
   box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.2);
