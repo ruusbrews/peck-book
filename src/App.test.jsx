@@ -28,3 +28,35 @@ test('default route renders the worker scan flow', () => {
   fireEvent.click(screen.getByRole('link', { name: 'Open admin agent demo' }));
   expect(screen.getByRole('heading', { name: 'PeckTag Agent' })).toBeDefined();
 });
+
+test('admin inspector panel records a live inspection result', () => {
+  render(
+    <MemoryRouter initialEntries={['/admin']}>
+      <App />
+    </MemoryRouter>,
+  );
+  const next = screen.getByRole('button', { name: /Next/ });
+  for (let i = 0; i < 5; i++) fireEvent.click(next);
+
+  fireEvent.change(screen.getByLabelText('Inspect'), { target: { value: 'package:PKG-003' } });
+  fireEvent.change(screen.getByLabelText('Result'), { target: { value: 'fail' } });
+  fireEvent.change(screen.getByLabelText('Inspector'), { target: { value: 'Inspector 7' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Record inspection' }));
+
+  expect(screen.getByText(/Manual inspection of PKG-003: fail/)).toBeDefined();
+  expect(screen.getByText('WITHDRAW')).toBeDefined();
+});
+
+test('typing a space in the inspector note does not advance the demo', () => {
+  render(
+    <MemoryRouter initialEntries={['/admin']}>
+      <App />
+    </MemoryRouter>,
+  );
+  fireEvent.click(screen.getByRole('button', { name: /Next/ }));
+  const note = screen.getByLabelText('Note');
+  fireEvent.keyDown(note, { key: ' ' });
+  expect(screen.getByText('Step 1 / 11')).toBeDefined();
+  fireEvent.keyDown(document.body, { key: ' ' });
+  expect(screen.getByText('Step 2 / 11')).toBeDefined();
+});

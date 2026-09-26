@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { PeckAgent } from './agent.js';
-import { ACTIONS } from './knowledge.js';
+import { ACTIONS, phGrade } from './knowledge.js';
 import { LOCATIONS, demoEvents } from './simulator.js';
 
 const T = '2026-10-01T09:00:00Z';
@@ -175,5 +175,63 @@ describe('location reputation', () => {
     const { agent } = run([...thawVia('P1', 1), ...thawVia('P2', 20)]);
     expect(agent.intentions.size).toBe(0);
     expect(agent.locations.get('wholesale-b').incidents.map((i) => i.packageId)).toEqual(['P2']);
+  });
+});
+
+describe('inspection fields', () => {
+  const setup = [register('P1'), scan('P1', 'hamad-port'), scan('P1', 'wholesale-a', { thaw: true })];
+
+  test('a pass with the product warmer than -12 C keeps the package held', () => {
+    const { agent, decisions } = run([
+      ...setup,
+      { type: 'inspection', packageId: 'P1', result: 'pass', measuredTempC: -8, inspector: 'A. Inspector', time: T },
+    ]);
+    expect(lastFor(decisions, 'P1')).toBe(ACTIONS.HOLD_FOR_INSPECTION);
+    expect(decisions.at(-1).reasons[0]).toMatch(/warmer than the -12 C limit/);
+    expect(agent.trace.some((t) => t.text.includes('by A. Inspector'))).toBe(true);
+  });
+
+  test('a later pass at a safe temperature releases it for priority sale', () => {
+    const { decisions } = run([
+      ...setup,
+      { type: 'inspection', packageId: 'P1', result: 'pass', measuredTempC: -8, time: T },
+      { type: 'inspection', packageId: 'P1', result: 'pass', measuredTempC: -19, time: T },
+    ]);
+    expect(lastFor(decisions, 'P1')).toBe(ACTIONS.PRIORITIZE_SALE);
+  });
+
+  test('an unknown result is rejected', () => {
+    expect(() => run([...setup, { type: 'inspection', packageId: 'P1', result: 'maybe', time: T }])).toThrow();
+  });
+});
+
+describe('expiry', () => {
+  test('a package scanned after its expiry date is withdrawn even with a clean strip', () => {
+    const { decisions } = run([register('P1', '2026-09-30'), scan('P1', 'hamad-port')]);
+    expect(lastFor(decisions, 'P1')).toBe(ACTIONS.WITHDRAW);
+    expect(decisions.at(-1).reasons.join(' ')).toMatch(/Art\. 4\(2\)/);
+  });
+
+  test('passing an inspection cannot put expired stock back on sale', () => {
+    const { decisions } = run([
+      register('P1', '2026-09-30'),
+      scan('P1', 'hamad-port'),
+      { type: 'inspection', packageId: 'P1', result: 'pass', time: T },
+    ]);
+    expect(lastFor(decisions, 'P1')).toBe(ACTIONS.WITHDRAW);
+  });
+});
+
+describe('pH grades', () => {
+  test('grades follow the PeckTag ranges, with gaps going to the more cautious grade', () => {
+    expect([5.5, 5.9, 6.1].map(phGrade)).toEqual(['fresh', 'fresh', 'fresh']);
+    expect([6.15, 6.5, 6.8].map(phGrade)).toEqual(['borderline', 'borderline', 'borderline']);
+    expect([6.9, 7.0, 7.4].map(phGrade)).toEqual(['spoiled', 'spoiled', 'spoiled']);
+  });
+
+  test('a scan with a numeric pH is graded and the reading is shown', () => {
+    const { decisions } = run([register('P1'), { ...scan('P1', 'hamad-port'), ph: undefined, phValue: 6.5 }]);
+    expect(lastFor(decisions, 'P1')).toBe(ACTIONS.PRIORITIZE_SALE);
+    expect(decisions.at(-1).reasons[0]).toBe('pH square reads borderline (pH 6.5)');
   });
 });

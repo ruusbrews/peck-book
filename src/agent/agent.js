@@ -1,4 +1,4 @@
-import { ACTIONS, ACTION_BASIS, DESIRES, KNOWLEDGE, SELLABLE, SETTINGS, STAGES } from './knowledge.js';
+import { ACTIONS, ACTION_BASIS, DESIRES, KNOWLEDGE, SELLABLE, SETTINGS, STAGES, phGrade } from './knowledge.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -11,6 +11,15 @@ const PLANS = [
     act: ({ why }) => ({
       action: ACTIONS.WITHDRAW,
       reasons: [...why('thaw', 'ph'), 'Pulled from sale; lab analysis and any destruction are for the authority'],
+      holds: ['evidence'],
+    }),
+  },
+  {
+    name: 'withdraw-expired',
+    when: ({ facts }) => facts.has('expired'),
+    act: ({ why }) => ({
+      action: ACTIONS.WITHDRAW,
+      reasons: [...why('expired'), 'Expired food is unfit for consumption (Qatar Law No. 8 of 1990, Art. 4(2))'],
       holds: ['evidence'],
     }),
   },
@@ -72,6 +81,15 @@ function distanceKm(a, b) {
   return 2 * 6371 * Math.asin(Math.sqrt(h));
 }
 
+function describeInspection(target, result, { note, inspector, measuredTempC }) {
+  const details = [
+    inspector && `by ${inspector}`,
+    Number.isFinite(measuredTempC) && `product at ${measuredTempC} C`,
+    note,
+  ].filter(Boolean);
+  return `Inspection of ${target}: ${result}${details.length ? ` (${details.join('; ')})` : ''}`;
+}
+
 function newPackage(id, fields) {
   return {
     id,
@@ -120,6 +138,8 @@ export class PeckAgent {
   }
 
   onScan(scan) {
+    // A scan may carry a numeric pH reading instead of a grade.
+    if (scan.ph === undefined && Number.isFinite(scan.phValue)) scan = { ...scan, ph: phGrade(scan.phValue) };
     const { packageId, time } = scan;
     const location = this.location(scan.location);
 
@@ -174,9 +194,14 @@ export class PeckAgent {
       facts.set('stripReset', 'Thaw square reads clear after it had triggered; the strip may have been replaced');
     }
 
-    if (scan.ph !== 'fresh') facts.set('ph', `pH square reads ${scan.ph}`);
-    if (pkg.expiry && Date.parse(pkg.expiry) - Date.parse(time) <= this.settings.nearExpiryDays * DAY_MS) {
-      facts.set('nearExpiry', `Expires ${pkg.expiry}`);
+    if (scan.ph !== 'fresh') {
+      const reading = Number.isFinite(scan.phValue) ? ` (pH ${scan.phValue})` : '';
+      facts.set('ph', `pH square reads ${scan.ph}${reading}`);
+    }
+    if (pkg.expiry) {
+      const left = Date.parse(pkg.expiry) - Date.parse(time);
+      if (left < 0) facts.set('expired', `Expired on ${pkg.expiry}`);
+      else if (left <= this.settings.nearExpiryDays * DAY_MS) facts.set('nearExpiry', `Expires ${pkg.expiry}`);
     }
     for (const text of facts.values()) this.note(time, 'belief', `${pkg.id}: ${text}`);
     const incidentDecisions = newBreach ? this.recordIncident(prev.location, pkg.id, time) : [];
@@ -250,10 +275,11 @@ export class PeckAgent {
     return decisions;
   }
 
-  onLocationInspection({ location: locationId, result, time, note }) {
+  onLocationInspection({ location: locationId, result, time, note, inspector }) {
+    if (!['clear', 'confirmed'].includes(result)) throw new Error(`Unknown location inspection result: ${result}`);
     const loc = this.location(locationId);
     const key = `investigate:${loc.id}`;
-    this.note(time, 'belief', `Inspection of ${loc.id}: ${result}${note ? ` (${note})` : ''}`);
+    this.note(time, 'belief', describeInspection(loc.id, result, { note, inspector }));
 
     if (result === 'confirmed') {
       // Keep the intention so stock still arriving from here stays held.
@@ -289,17 +315,29 @@ export class PeckAgent {
     return decisions;
   }
 
-  onPackageInspection({ packageId, result, time, note }) {
+  onPackageInspection({ packageId, result, time, note, inspector, measuredTempC }) {
+    if (!['pass', 'fail'].includes(result)) throw new Error(`Unknown package inspection result: ${result}`);
     const pkg = this.package(packageId);
-    this.note(time, 'belief', `Inspection of ${pkg.id}: ${result}${note ? ` (${note})` : ''}`);
+    this.note(time, 'belief', describeInspection(pkg.id, result, { note, inspector, measuredTempC }));
     if (result === 'fail') {
-      return [this.decide(time, pkg.id, { action: ACTIONS.WITHDRAW, reasons: ['Failed inspection'] })];
+      const reasons = ['Failed inspection', ...(note ? [note] : [])];
+      return [this.decide(time, pkg.id, { action: ACTIONS.WITHDRAW, reasons })];
     }
 
     pkg.holds.delete('evidence');
+    pkg.holds.delete('temperature');
     const last = pkg.scans.at(-1);
+    const tooWarm = Number.isFinite(measuredTempC) && measuredTempC > this.settings.frozenAbsoluteMaxC;
     let proposal;
-    if (pkg.holds.size) {
+    if (tooWarm) {
+      pkg.holds.add('temperature');
+      proposal = {
+        action: ACTIONS.HOLD_FOR_INSPECTION,
+        reasons: [
+          `Measured ${measuredTempC} C, warmer than the ${this.settings.frozenAbsoluteMaxC} C limit (Codex CXC 8-1976 s.4.7, s.4.9); bring back to ${this.settings.frozenStorageMaxC} C and re-check before release`,
+        ],
+      };
+    } else if (pkg.holds.size) {
       proposal = {
         action: ACTIONS.HOLD_FOR_INSPECTION,
         reasons: ['Passed inspection but still linked to a location under investigation'],
@@ -319,8 +357,14 @@ export class PeckAgent {
   // learned policy added later, can override them.
   enforce(pkg, proposal, time) {
     const last = pkg.scans.at(-1);
+    const expired = pkg.expiry && Date.parse(time) > Date.parse(pkg.expiry);
     let forced = null;
-    if (pkg.status === 'withdrawn' || (last?.thaw && last.ph === 'spoiled')) {
+    if (expired && SELLABLE.has(proposal.action)) {
+      forced = {
+        action: ACTIONS.WITHDRAW,
+        reasons: ['Safety rule: expired stock never returns to sale (Qatar Law No. 8 of 1990, Art. 4(2))'],
+      };
+    } else if (pkg.status === 'withdrawn' || (last?.thaw && last.ph === 'spoiled')) {
       forced = {
         action: ACTIONS.WITHDRAW,
         reasons: ['Safety rule: thawed-and-spoiled or withdrawn stock never returns to sale'],

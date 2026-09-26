@@ -137,7 +137,19 @@ export const KNOWLEDGE = {
     kind: 'research',
     verified: true,
     source: 'Ahmed, Bose, Nousheen and Roy (2024), International Journal of Biomaterials, PMC10994710',
-    note: 'Chicken spoiled at 30 C, not frozen. Shows anthocyanin colour tracks TVB-N and pH; PeckTag grades must be calibrated for its own formulation.',
+    note: 'Chicken spoiled at 30 C, not frozen. Used only as evidence that anthocyanin colour tracks spoilage; its pH scale differs from PeckTag\'s, which uses pecktagPhGrades.',
+  },
+  pecktagPhGrades: {
+    value: {
+      fresh: { min: 5.7, max: 6.1 },
+      borderline: { min: 6.2, max: 6.8 },
+      spoiled: { above: 7.0 },
+    },
+    unit: 'pH',
+    kind: 'research',
+    verified: false,
+    source: 'PeckTag team strip design: purple sweet potato anthocyanin indicator (add the supporting paper)',
+    note: 'Readings in the gaps (6.1-6.2 and 6.8-7.0) are graded into the more cautious category; readings below 5.7 count as fresh. Confirm with the team and with lab calibration.',
   },
   irreversibleThawIndicators: {
     value: 'colour changes as the sample warms towards 0 C and does not revert when refrozen',
@@ -180,6 +192,15 @@ export const KNOWLEDGE = {
   },
 };
 
+// Grades a numeric pH reading using the PeckTag ranges. Values in the gaps between the
+// published ranges go to the more cautious (higher) grade.
+export function phGrade(pH) {
+  const { fresh, borderline } = KNOWLEDGE.pecktagPhGrades.value;
+  if (pH <= fresh.max) return 'fresh';
+  if (pH <= borderline.max) return 'borderline';
+  return 'spoiled';
+}
+
 // Plain values for the agent, e.g. SETTINGS.suspectThreshold === 2.
 export const SETTINGS = Object.fromEntries(Object.entries(KNOWLEDGE).map(([key, entry]) => [key, entry.value]));
 
@@ -199,7 +220,7 @@ export const ACTION_BASIS = {
   [ACTIONS.PRIORITIZE_SALE]: ['stockRotation'],
   [ACTIONS.INSPECT]: ['temperatureViolationProcedure', 'unfitForConsumption'],
   [ACTIONS.HOLD_FOR_INSPECTION]: ['temperatureViolationProcedure'],
-  [ACTIONS.WITHDRAW]: ['temperatureViolationProcedure', 'inspectorPowers'],
+  [ACTIONS.WITHDRAW]: ['unfitForConsumption', 'temperatureViolationProcedure', 'inspectorPowers'],
   [ACTIONS.ESCALATE]: ['temperatureViolationProcedure', 'dateLabelIntegrity', 'postCustomsOversight', 'inspectorPowers'],
   [ACTIONS.RESCAN]: ['minReadConfidence'],
 };
