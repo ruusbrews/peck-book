@@ -73,8 +73,9 @@ select {
 
 .scanner-stage {
   position: relative;
-  width: 100%;
-  aspect-ratio: 1 / 1.12;
+  width: min(100%, 29dvh, 290px);
+  height: min(54dvh, 520px);
+  margin-inline: auto;
   overflow: hidden;
   border-radius: 14px;
   background: #000;
@@ -91,17 +92,19 @@ select {
   position: absolute;
   inset: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
+  padding-bottom: 4%;
   pointer-events: none;
 }
 
 .scan-frame {
-  width: 72%;
-  height: 54%;
+  /* The square takes about a quarter of the tall preview and stays anchored at its base. */
+  width: 48%;
+  aspect-ratio: 1;
   border: 3px solid rgba(255, 255, 255, 0.9);
   border-radius: 16px;
-  box-shadow: inset 0 0 0 9999px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.2);
 }
 
 .scan-hint {
