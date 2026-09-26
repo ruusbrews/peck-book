@@ -2,16 +2,18 @@
 
 This project is a mobile-first demo for a worker-facing scan flow on frozen chicken packaging in Qatar. It is intentionally separate from the existing admin/reasoning prototype in this repo: the worker app reads a barcode from a physical strip, confirms shipment details in a modal, and then shows a verdict and recommended action. The separate admin/BDI feature remains in place under `/admin` and is intentionally not connected to this worker flow for this pass. The app is designed for a hackathon demo and is deliberately scoped to a self-contained barcode-driven scenario lookup rather than a live backend or shared state with the reasoning agent.
 
+Deployed demo: [https://peck-book.web.app/](https://peck-book.web.app/)
+
 ## Current worker-facing user flow
 
 1. Open the app at the root route (`/`) or `/scan`.
-2. The camera screen opens with a framed viewfinder for the packaging strip.
+2. The camera screen opens with a tall, bookmark-shaped viewfinder so the strip remains visible, plus a wide barcode guide at the bottom.
 3. A worker scans the Code 128 barcode on the case.
 4. If the barcode matches a known scenario, the app pauses scanning and opens a confirmation modal.
 5. The worker edits or confirms the batch ID, location, and supply-chain stage, then taps `Confirm`.
 6. A short success state appears and the app logs a stub submission object to `console.log`.
 7. The verdict view appears with the ammonia result, freeze-thaw result, overall verdict badge, and recommended action.
-8. The worker taps `Scan next shipment` to resume scanning.
+8. The worker taps `Scan next shipment` to resume scanning. The camera screen also has a footer link to the separate admin agent demo at `/admin`.
 
 This pass is intentionally a demo only: no Firebase write, no database, no shared state, and no import from `src/agent/*`.
 
@@ -44,10 +46,10 @@ npm start
 The app starts with the Vite script in `package.json`:
 
 ```json
-"start": "cross-env BROWSER=none WDS_SOCKET_PORT=0 vite --port 3000"
+"start": "cross-env BROWSER=none WDS_SOCKET_PORT=0 vite --host --port 3000"
 ```
 
-If port 3000 is already occupied, Vite will pick the next available port (the current local test server used port 3001 in this environment).
+The server binds to all network interfaces for Codespaces port forwarding and uses port 3000 by default. If that port is already occupied, Vite automatically tries the next available port.
 
 Run the tests:
 
@@ -68,6 +70,7 @@ npm run build
 - No real database or backend is connected yet; submission logging is a stub and writes to `console.log`.
 - This scan flow is intentionally not connected to the existing agent feature under `src/agent/*`.
 - The separate admin demo remains available at `/admin` and is not part of this worker flow.
+- The barcode guide is a visual alignment aid; the scanner decodes from the camera feed rather than restricting decoding to only the guide rectangle.
 - Camera scanning requires a secure context (`https` or `localhost`), which matches the Codespace setup.
 
 ## Demo barcode scenarios
