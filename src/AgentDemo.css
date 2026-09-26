@@ -6,12 +6,12 @@
   --ink: #2e2118;
   --muted: #8c7b6d;
   --line: #e6d6bd;
-  --good: #3d8b5a;
-  --good-bg: #e5f3e9;
-  --warn: #b7791f;
-  --warn-bg: #fdf1dc;
-  --bad: #c0392b;
-  --bad-bg: #fbe4e1;
+  --good: #15803d;
+  --good-bg: #dcfce7;
+  --warn: #c2410c;
+  --warn-bg: #ffedd5;
+  --bad: #b91c1c;
+  --bad-bg: #fee2e2;
 }
 
 body {
@@ -178,11 +178,19 @@ body {
 
 .badge {
   font-size: 0.7rem;
+  font-weight: 700;
   text-transform: uppercase;
-  padding: 2px 6px;
+  padding: 2px 7px;
   border-radius: 999px;
-  background: var(--ink);
   color: white;
+}
+
+.status-suspect .badge {
+  background: var(--warn);
+}
+
+.status-confirmed .badge {
+  background: var(--bad);
 }
 
 .incidents {
@@ -200,8 +208,9 @@ body {
 }
 
 .chip {
-  font-size: 0.72rem;
-  padding: 2px 7px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 3px 8px;
   border-radius: 999px;
   border: 1px solid transparent;
   white-space: nowrap;
@@ -213,21 +222,18 @@ body {
 }
 
 .pkg-ok {
-  background: var(--good-bg);
-  color: var(--good);
-  border-color: var(--good);
+  background: var(--good);
+  color: white;
 }
 
 .pkg-held {
-  background: var(--warn-bg);
-  color: var(--warn);
-  border-color: var(--warn);
+  background: var(--warn);
+  color: white;
 }
 
 .pkg-withdrawn {
-  background: var(--bad-bg);
-  color: var(--bad);
-  border-color: var(--bad);
+  background: var(--bad);
+  color: white;
 }
 
 .legend {
@@ -306,7 +312,6 @@ body {
   padding: 10px 12px;
   margin-bottom: 10px;
   border-left: 5px solid;
-  background: white;
 }
 
 .tone-good {
@@ -334,19 +339,35 @@ body {
 
 .action {
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
+  padding: 3px 9px;
+  border-radius: 999px;
+  color: white;
+  background: var(--muted);
+}
+
+.tone-good {
+  background: var(--good-bg);
+}
+
+.tone-warn {
+  background: var(--warn-bg);
+}
+
+.tone-bad {
+  background: var(--bad-bg);
 }
 
 .tone-good .action {
-  color: var(--good);
+  background: var(--good);
 }
 
 .tone-warn .action {
-  color: var(--warn);
+  background: var(--warn);
 }
 
 .tone-bad .action {
-  color: var(--bad);
+  background: var(--bad);
 }
 
 .targets {
