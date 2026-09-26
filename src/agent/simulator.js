@@ -2,13 +2,14 @@
 // Two packages thaw after leaving Wholesale B, which makes the agent suspect the
 // handler and hold stock from there, even stock whose strip still looks clean.
 
+// Coordinates are illustrative points around Doha, used for the GPS cross-check.
 export const LOCATIONS = [
-  { id: 'hamad-port', name: 'Hamad Port', stage: 'port' },
-  { id: 'wholesale-a', name: 'Wholesale A', stage: 'wholesale' },
-  { id: 'wholesale-b', name: 'Wholesale B', stage: 'wholesale' },
-  { id: 'shop-1', name: 'Shop 1', stage: 'retail' },
-  { id: 'shop-2', name: 'Shop 2', stage: 'retail' },
-  { id: 'shop-3', name: 'Shop 3', stage: 'retail' },
+  { id: 'hamad-port', name: 'Hamad Port', stage: 'port', coords: { lat: 25.012, lng: 51.605 } },
+  { id: 'wholesale-a', name: 'Wholesale A', stage: 'wholesale', coords: { lat: 25.195, lng: 51.435 } },
+  { id: 'wholesale-b', name: 'Wholesale B', stage: 'wholesale', coords: { lat: 25.168, lng: 51.598 } },
+  { id: 'shop-1', name: 'Shop 1', stage: 'retail', coords: { lat: 25.286, lng: 51.531 } },
+  { id: 'shop-2', name: 'Shop 2', stage: 'retail', coords: { lat: 25.318, lng: 51.438 } },
+  { id: 'shop-3', name: 'Shop 3', stage: 'retail', coords: { lat: 25.252, lng: 51.497 } },
 ];
 
 const CLEAN = { thaw: false, ph: 'fresh', readConfidence: 0.95 };

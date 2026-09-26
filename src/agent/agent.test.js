@@ -101,8 +101,79 @@ describe('single-package reasoning', () => {
     expect(agent.packages.get('P1').scans).toHaveLength(0);
   });
 
+  test('a scan far from its claimed facility is inspected', () => {
+    const nearWholesaleB = { lat: 25.168, lng: 51.598 };
+    const { decisions } = run([
+      register('P1'),
+      scan('P1', 'hamad-port'),
+      scan('P1', 'wholesale-a'),
+      scan('P1', 'shop-1', { gps: nearWholesaleB }),
+    ]);
+    expect(lastFor(decisions, 'P1')).toBe(ACTIONS.INSPECT);
+    expect(decisions.at(-1).reasons[0]).toMatch(/km away/);
+  });
+
+  test('a scan within range of its facility passes the GPS check', () => {
+    const { decisions } = run([
+      register('P1'),
+      scan('P1', 'hamad-port', { gps: { lat: 25.013, lng: 51.606 } }),
+    ]);
+    expect(lastFor(decisions, 'P1')).toBe(ACTIONS.CONTINUE);
+  });
+
+  test('stock moving back up the chain is inspected', () => {
+    const { decisions } = run([
+      register('P1'),
+      scan('P1', 'hamad-port'),
+      scan('P1', 'wholesale-a'),
+      scan('P1', 'shop-1'),
+      scan('P1', 'wholesale-b'),
+    ]);
+    expect(lastFor(decisions, 'P1')).toBe(ACTIONS.INSPECT);
+  });
+
+  test('the same package ID at a second shop is escalated as a cloned label', () => {
+    const { decisions } = run([
+      register('P1'),
+      scan('P1', 'hamad-port'),
+      scan('P1', 'wholesale-a'),
+      scan('P1', 'shop-1'),
+      scan('P1', 'shop-2'),
+    ]);
+    expect(lastFor(decisions, 'P1')).toBe(ACTIONS.ESCALATE);
+  });
+
   test('a borderline pH reading on clean stock means sell first, not discard', () => {
     const { decisions } = run([register('P1'), scan('P1', 'hamad-port', { ph: 'borderline' })]);
     expect(lastFor(decisions, 'P1')).toBe(ACTIONS.PRIORITIZE_SALE);
+  });
+});
+
+describe('location reputation', () => {
+  const at = (day) => `2026-10-${String(day).padStart(2, '0')}T09:00:00Z`;
+  const thawVia = (id, day) => [
+    { ...register(id), time: at(day) },
+    { ...scan(id, 'wholesale-b'), time: at(day) },
+    { ...scan(id, 'shop-1', { thaw: true }), time: at(day + 1) },
+  ];
+
+  test('a location with a confirmed violation is investigated after a single incident', () => {
+    const { agent, decisions } = run([
+      ...thawVia('P1', 1),
+      ...thawVia('P2', 1),
+      { type: 'inspection', location: 'wholesale-b', result: 'confirmed', time: at(3) },
+      { type: 'inspection', location: 'wholesale-b', result: 'clear', time: at(4) },
+      ...thawVia('P3', 5),
+    ]);
+    const inspections = decisions.filter((d) => d.target === 'wholesale-b' && d.action === ACTIONS.INSPECT);
+    expect(inspections).toHaveLength(2);
+    expect(inspections[1].reasons[0]).toMatch(/repeat offender/);
+    expect(agent.locations.get('wholesale-b').violations).toBe(1);
+  });
+
+  test('incidents older than the window do not add up', () => {
+    const { agent } = run([...thawVia('P1', 1), ...thawVia('P2', 20)]);
+    expect(agent.intentions.size).toBe(0);
+    expect(agent.locations.get('wholesale-b').incidents.map((i) => i.packageId)).toEqual(['P2']);
   });
 });

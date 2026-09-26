@@ -1,9 +1,13 @@
 import { expect, test } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import App from './App';
 
-test('renders learn react link', () => {
+test('steps through the demo and shows the agent holding clean stock', () => {
   render(<App />);
-  const linkElement = screen.getByText(/learn react/i);
-  expect(linkElement).toBeDefined();
+  const next = screen.getByRole('button', { name: /Next/ });
+  for (let i = 0; i < 5; i++) fireEvent.click(next);
+
+  expect(screen.getByText(/PKG-003 reaches Shop 2/)).toBeDefined();
+  expect(screen.getByText('HOLD FOR INSPECTION')).toBeDefined();
+  expect(screen.getByText(/Investigate/)).toBeDefined();
 });

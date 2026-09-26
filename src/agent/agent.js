@@ -1,4 +1,4 @@
-import { ACTIONS, DESIRES, SELLABLE, SETTINGS, STAGES } from './knowledge.js';
+import { ACTIONS, ACTION_BASIS, DESIRES, KNOWLEDGE, SELLABLE, SETTINGS, STAGES } from './knowledge.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -8,14 +8,18 @@ const PLANS = [
   {
     name: 'withdraw-spoiled',
     when: ({ scan }) => scan.thaw && scan.ph === 'spoiled',
-    act: ({ why }) => ({ action: ACTIONS.WITHDRAW, reasons: why('thaw', 'ph'), holds: ['evidence'] }),
+    act: ({ why }) => ({
+      action: ACTIONS.WITHDRAW,
+      reasons: [...why('thaw', 'ph'), 'Pulled from sale; lab analysis and any destruction are for the authority'],
+      holds: ['evidence'],
+    }),
   },
   {
     name: 'escalate-tampering',
-    when: ({ facts }) => facts.has('unregistered') || facts.has('stripReset'),
+    when: ({ facts }) => facts.has('unregistered') || facts.has('stripReset') || facts.has('duplicateId'),
     act: ({ why }) => ({
       action: ACTIONS.ESCALATE,
-      reasons: why('unregistered', 'stripReset'),
+      reasons: why('unregistered', 'stripReset', 'duplicateId'),
       holds: ['evidence'],
     }),
   },
@@ -39,9 +43,13 @@ const PLANS = [
     }),
   },
   {
-    name: 'inspect-custody-gap',
-    when: ({ facts }) => facts.has('gap'),
-    act: ({ why }) => ({ action: ACTIONS.INSPECT, reasons: why('gap'), holds: ['evidence'] }),
+    name: 'inspect-custody-anomaly',
+    when: ({ facts }) => facts.has('gap') || facts.has('reverseFlow') || facts.has('gpsMismatch'),
+    act: ({ why }) => ({
+      action: ACTIONS.INSPECT,
+      reasons: why('gap', 'reverseFlow', 'gpsMismatch'),
+      holds: ['evidence'],
+    }),
   },
   {
     name: 'sell-first',
@@ -54,6 +62,15 @@ const PLANS = [
     act: () => ({ action: ACTIONS.CONTINUE, reasons: ['Strip and custody record are clean'] }),
   },
 ];
+
+// Great-circle distance in km between two { lat, lng } points.
+function distanceKm(a, b) {
+  const rad = (deg) => (deg * Math.PI) / 180;
+  const h =
+    Math.sin(rad(b.lat - a.lat) / 2) ** 2 +
+    Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(rad(b.lng - a.lng) / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.sqrt(h));
+}
 
 function newPackage(id, fields) {
   return {
@@ -79,7 +96,8 @@ export class PeckAgent {
     this.settings = { ...SETTINGS, ...settings };
     this.packages = new Map();
     this.locations = new Map(
-      locations.map((loc) => [loc.id, { ...loc, status: 'trusted', incidents: [] }]),
+      // incidents: recent thaws traced here; violations: confirmed by past inspections
+      locations.map((loc) => [loc.id, { ...loc, status: 'trusted', incidents: [], violations: 0 }]),
     );
     this.intentions = new Map();
     this.trace = [];
@@ -126,8 +144,19 @@ export class PeckAgent {
     pkg.scans.push(scan);
     let newBreach = false;
 
-    if (prev && STAGES[location.stage] - STAGES[this.location(prev.location).stage] > 1) {
-      facts.set('gap', `No custody scan between ${prev.location} and ${location.id}`);
+    if (prev) {
+      const step = STAGES[location.stage] - STAGES[this.location(prev.location).stage];
+      if (step > 1) facts.set('gap', `No custody scan between ${prev.location} and ${location.id}`);
+      if (step < 0) facts.set('reverseFlow', `Moved backwards in the chain, from ${prev.location} to ${location.id}`);
+      if (step === 0 && location.stage === 'retail' && prev.location !== location.id) {
+        facts.set('duplicateId', `Already received at ${prev.location}; the same ID at a second shop suggests a cloned label`);
+      }
+    }
+    if (scan.gps && location.coords) {
+      const km = distanceKm(scan.gps, location.coords);
+      if (km > this.settings.maxGpsDistanceKm) {
+        facts.set('gpsMismatch', `Scan claims ${location.id} but the phone was ${km.toFixed(1)} km away`);
+      }
     }
 
     if (scan.thaw && !pkg.breach) {
@@ -166,14 +195,23 @@ export class PeckAgent {
     return [this.decide(time, pkg.id, this.enforce(pkg, proposal, time)), ...incidentDecisions];
   }
 
-  // A thaw traced back to a location. Enough of them and the agent commits to investigating it.
+  // A thaw traced back to a location. Enough recent ones and the agent commits to investigating it;
+  // a location with a confirmed past violation needs fewer.
   recordIncident(locationId, packageId, time) {
     const loc = this.location(locationId);
-    if (!loc.incidents.includes(packageId)) loc.incidents.push(packageId);
-    this.note(time, 'belief', `${loc.id} linked to ${loc.incidents.length} thaw incident(s): ${loc.incidents.join(', ')}`);
+    const cutoff = Date.parse(time) - this.settings.incidentWindowDays * DAY_MS;
+    loc.incidents = loc.incidents.filter((i) => Date.parse(i.time) >= cutoff && i.packageId !== packageId);
+    loc.incidents.push({ packageId, time });
+    const ids = loc.incidents.map((i) => i.packageId);
+    this.note(time, 'belief', `${loc.id} linked to ${ids.length} recent thaw incident(s): ${ids.join(', ')}`);
+
+    const threshold = loc.violations
+      ? this.settings.repeatOffenderThreshold
+      : this.settings.suspectThreshold;
+    if (loc.violations) this.note(time, 'belief', `${loc.id} has ${loc.violations} confirmed past violation(s)`);
 
     const key = `investigate:${loc.id}`;
-    if (loc.incidents.length < this.settings.suspectThreshold || this.intentions.has(key)) return [];
+    if (ids.length < threshold || this.intentions.has(key)) return [];
     return this.adoptInvestigation(loc, key, packageId, time);
   }
 
@@ -188,7 +226,10 @@ export class PeckAgent {
         loc.id,
         {
           action: ACTIONS.INSPECT,
-          reasons: [`${loc.incidents.length} packages first showed thaw after leaving ${loc.id}`],
+          reasons: [
+            `${loc.incidents.length} package(s) first showed thaw after leaving ${loc.id}` +
+              (loc.violations ? ` (repeat offender: ${loc.violations} confirmed violation(s))` : ''),
+          ],
         },
         'location',
       ),
@@ -217,6 +258,7 @@ export class PeckAgent {
     if (result === 'confirmed') {
       // Keep the intention so stock still arriving from here stays held.
       loc.status = 'confirmed';
+      loc.violations += 1;
       this.note(time, 'intention', `Keeping holds on stock from ${loc.id} and escalating`);
       return [
         this.decide(
@@ -225,7 +267,7 @@ export class PeckAgent {
           {
             action: ACTIONS.ESCALATE,
             reasons: [`Inspection confirmed cold-chain violations at ${loc.id}`],
-            evidence: loc.incidents.map((id) => ({ packageId: id, ...this.packages.get(id).breach })),
+            evidence: loc.incidents.map(({ packageId }) => ({ packageId, ...this.packages.get(packageId).breach })),
           },
           'location',
         ),
@@ -300,7 +342,8 @@ export class PeckAgent {
       pkg.status = action === ACTIONS.WITHDRAW ? 'withdrawn' : SELLABLE.has(action) ? 'ok' : 'held';
     }
     this.note(time, 'decision', `${target} -> ${action}: ${reasons.join('; ')}`);
-    return { time, target, targetType, action, reasons, ...(evidence && { evidence }) };
+    const basis = (ACTION_BASIS[action] ?? []).map((key) => ({ key, source: KNOWLEDGE[key].source ?? 'policy' }));
+    return { time, target, targetType, action, reasons, basis, ...(evidence && { evidence }) };
   }
 
   investigationsFor(pkg) {
@@ -329,7 +372,7 @@ export class PeckAgent {
     return {
       desires: DESIRES,
       intentions: [...this.intentions.values()],
-      locations: [...this.locations.values()].map((l) => ({ ...l, incidents: [...l.incidents] })),
+      locations: [...this.locations.values()].map((l) => ({ ...l, incidents: l.incidents.map((i) => ({ ...i })) })),
       packages: [...this.packages.values()].map((p) => ({ ...p, holds: [...p.holds], scans: [...p.scans] })),
     };
   }
