@@ -1,0 +1,184 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8a4b2f"/>
+    </marker>
+  </defs>
+  <rect width="1600" height="900" fill="#f7efe1"/>
+
+  <!-- Title -->
+  <text x="40" y="58" font-size="34" font-weight="700" fill="#8a4b2f">Inside the BDI agent</text>
+  <text x="40" y="90" font-size="17" fill="#8c7b6d">A closer look at step 3 (Reason) and step 4 (Check)</text>
+
+  <!-- ===== KNOWLEDGE BASE ===== -->
+  <rect x="40" y="120" width="330" height="680" rx="14" fill="#fffaf2" stroke="#8a4b2f" stroke-width="2"/>
+  <path d="M40 164 V134 A14 14 0 0 1 54 120 H356 A14 14 0 0 1 370 134 V164 Z" fill="#5c3120"/>
+  <text x="58" y="148" font-size="18" font-weight="700" fill="#ffffff">Knowledge base</text>
+  <text x="58" y="190" font-size="12.5" fill="#8c7b6d">every rule cites its source</text>
+
+  <g font-size="12.5" font-weight="700" fill="#ffffff">
+    <rect x="58" y="208" width="104" height="24" rx="12" fill="#8a4b2f"/><text x="110" y="225" text-anchor="middle">Qatari law</text>
+    <rect x="58" y="330" width="112" height="24" rx="12" fill="#2f6f8f"/><text x="114" y="347" text-anchor="middle">International</text>
+    <rect x="58" y="452" width="92" height="24" rx="12" fill="#7a5aa6"/><text x="104" y="469" text-anchor="middle">Guidance</text>
+    <rect x="58" y="552" width="92" height="24" rx="12" fill="#15803d"/><text x="104" y="569" text-anchor="middle">Research</text>
+    <rect x="58" y="674" width="76" height="24" rx="12" fill="#8c7b6d"/><text x="96" y="691" text-anchor="middle">Policy</text>
+  </g>
+  <g font-size="14" font-weight="700" fill="#2e2118">
+    <text x="58" y="256">Law No. 8 of 1990 · QS 10050:2025</text>
+    <text x="58" y="378">Codex CXC 8-1976 (FAO/WHO)</text>
+    <text x="58" y="500">MOPH food-safety guidance</text>
+    <text x="58" y="600">Miao et al. 2023 · GB 2707-2016</text>
+    <text x="58" y="722">Operator settings</text>
+  </g>
+  <g font-size="12.5" fill="#5c3120">
+    <text x="58" y="278">unfit food · oversight after customs</text>
+    <text x="58" y="296">inspector powers · no altered date labels</text>
+    <text x="58" y="400">store at −18 °C · never above −12 °C</text>
+    <text x="58" y="418">violation procedure · stock rotation</text>
+    <text x="58" y="522">avoid refreezing thawed food</text>
+    <text x="58" y="622">pH grades: fresh ≤ 6.1 · borderline ≤ 6.8</text>
+    <text x="58" y="640">spoiled &gt; 6.8 · TVB-N limit 15 mg/100 g</text>
+    <text x="58" y="744">2 incidents / 14 days · 1 km GPS</text>
+    <text x="58" y="762">3 days to expiry · photo clarity</text>
+  </g>
+  <line x1="58" y1="314" x2="352" y2="314" stroke="#e6d6bd"/>
+  <line x1="58" y1="436" x2="352" y2="436" stroke="#e6d6bd"/>
+  <line x1="58" y1="536" x2="352" y2="536" stroke="#e6d6bd"/>
+  <line x1="58" y1="658" x2="352" y2="658" stroke="#e6d6bd"/>
+
+  <!-- Knowledge feeds the agent -->
+  <line x1="372" y1="285" x2="396" y2="285" stroke="#8a4b2f" stroke-width="3" marker-end="url(#arrow)"/>
+  <line x1="372" y1="635" x2="396" y2="635" stroke="#8a4b2f" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <!-- ===== BELIEFS ===== -->
+  <rect x="400" y="120" width="375" height="330" rx="14" fill="#fffaf2" stroke="#8a4b2f" stroke-width="2"/>
+  <path d="M400 164 V134 A14 14 0 0 1 414 120 H761 A14 14 0 0 1 775 134 V164 Z" fill="#8a4b2f"/>
+  <text x="418" y="148" font-size="18" font-weight="700" fill="#ffffff">B · Beliefs</text>
+  <text x="418" y="190" font-size="12.5" fill="#8c7b6d">what it knows, updated by every event</text>
+  <text x="418" y="218" font-size="11.5" font-weight="700" fill="#8a4b2f">PER PACKAGE</text>
+  <g font-size="13.5" fill="#2e2118">
+    <text x="418" y="240">• scan history</text>
+    <text x="418" y="261">• thaw · pH grade</text>
+    <text x="418" y="282">• expiry date</text>
+    <text x="418" y="303">• holds · status</text>
+  </g>
+  <text x="598" y="218" font-size="11.5" font-weight="700" fill="#8a4b2f">PER LOCATION</text>
+  <g font-size="13.5" fill="#2e2118">
+    <text x="598" y="240">• thaw incidents (14 days)</text>
+    <text x="598" y="261">• confirmed violations</text>
+    <text x="598" y="282">• trusted / suspect /</text>
+    <text x="610" y="303">confirmed</text>
+  </g>
+  <rect x="418" y="330" width="339" height="92" rx="12" fill="#f7efe1"/>
+  <text x="432" y="354" font-size="11.5" font-weight="700" fill="#8c7b6d">EXAMPLE BELIEFS</text>
+  <text x="432" y="378" font-size="13" font-style="italic" fill="#5c3120">"PKG-001 thawed after leaving Wholesale B"</text>
+  <text x="432" y="402" font-size="13" font-style="italic" fill="#5c3120">"Wholesale B: 2 thaw incidents this week"</text>
+
+  <!-- ===== DESIRES ===== -->
+  <rect x="790" y="120" width="375" height="330" rx="14" fill="#fffaf2" stroke="#8a4b2f" stroke-width="2"/>
+  <path d="M790 164 V134 A14 14 0 0 1 804 120 H1151 A14 14 0 0 1 1165 134 V164 Z" fill="#8a4b2f"/>
+  <text x="808" y="148" font-size="18" font-weight="700" fill="#ffffff">D · Desires</text>
+  <text x="808" y="190" font-size="12.5" fill="#8c7b6d">what it wants, ranked: the higher goal wins a conflict</text>
+  <g font-size="15" fill="#2e2118">
+    <circle cx="824" cy="228" r="15" fill="#b91c1c"/><text x="824" y="234" font-size="15" font-weight="700" text-anchor="middle" fill="#fff">1</text>
+    <text x="850" y="233">Keep unsafe food off shelves</text>
+    <circle cx="824" cy="281" r="15" fill="#c2410c"/><text x="824" y="287" font-size="15" font-weight="700" text-anchor="middle" fill="#fff">2</text>
+    <text x="850" y="286">Find where the chain broke</text>
+    <circle cx="824" cy="334" r="15" fill="#15803d"/><text x="824" y="340" font-size="15" font-weight="700" text-anchor="middle" fill="#fff">3</text>
+    <text x="850" y="339">Don't waste food that's still good</text>
+    <circle cx="824" cy="387" r="15" fill="#8c7b6d"/><text x="824" y="393" font-size="15" font-weight="700" text-anchor="middle" fill="#fff">4</text>
+    <text x="850" y="392">Keep clean stock moving</text>
+  </g>
+  <path d="M1140 220 V395" stroke="#c9ad8a" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="1130" y="310" font-size="11.5" fill="#8c7b6d" text-anchor="middle" transform="rotate(-90 1130 310)">priority</text>
+
+  <!-- ===== INTENTIONS ===== -->
+  <rect x="1180" y="120" width="380" height="330" rx="14" fill="#fffaf2" stroke="#8a4b2f" stroke-width="2"/>
+  <path d="M1180 164 V134 A14 14 0 0 1 1194 120 H1546 A14 14 0 0 1 1560 134 V164 Z" fill="#8a4b2f"/>
+  <text x="1198" y="148" font-size="18" font-weight="700" fill="#ffffff">I · Intentions</text>
+  <text x="1198" y="190" font-size="12.5" fill="#8c7b6d">what it commits to, and keeps acting on over time</text>
+  <rect x="1196" y="204" width="348" height="140" rx="12" fill="#ffedd5" stroke="#c2410c" stroke-width="1.5"/>
+  <circle cx="1218" cy="228" r="9" fill="none" stroke="#c2410c" stroke-width="3"/><line x1="1224" y1="235" x2="1232" y2="243" stroke="#c2410c" stroke-width="3" stroke-linecap="round"/>
+  <text x="1242" y="233" font-size="15" font-weight="700" fill="#5c3120">Investigate a site</text>
+  <g font-size="13" fill="#2e2118">
+    <text x="1212" y="262"><tspan font-weight="700">Opens</tspan> after 2 thaw incidents in 14 days (1 if repeat)</text>
+    <text x="1212" y="284"><tspan font-weight="700">Holds</tspan> all stock that passed through it, even clean strips</text>
+    <text x="1212" y="306"><tspan font-weight="700">Closes</tspan> only when an inspector reports:</text>
+    <text x="1212" y="328" font-weight="700"><tspan fill="#15803d">cleared → release</tspan><tspan fill="#8c7b6d">   ·   </tspan><tspan fill="#b91c1c">violation → escalate + remember</tspan></text>
+  </g>
+  <text x="1198" y="372" font-size="11.5" font-weight="700" fill="#8a4b2f">HOLDS ON A PACKAGE · lifted only by inspection</text>
+  <g font-size="12.5" fill="#5c3120" text-anchor="middle">
+    <rect x="1198" y="384" width="98" height="26" rx="13" fill="#e6d6bd"/><text x="1247" y="402">own evidence</text>
+    <rect x="1304" y="384" width="98" height="26" rx="13" fill="#e6d6bd"/><text x="1353" y="402">suspect site</text>
+    <rect x="1410" y="384" width="134" height="26" rx="13" fill="#e6d6bd"/><text x="1477" y="402">warmer than −12 °C</text>
+  </g>
+
+  <!-- BDI → plans -->
+  <line x1="780" y1="452" x2="780" y2="468" stroke="#8a4b2f" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <!-- ===== PLAN LIBRARY ===== -->
+  <rect x="400" y="470" width="760" height="330" rx="14" fill="#fffaf2" stroke="#8a4b2f" stroke-width="2"/>
+  <text x="418" y="498" font-size="15" font-weight="700" fill="#5c3120">PLAN LIBRARY</text>
+  <text x="546" y="498" font-size="13" fill="#8c7b6d">9 plans · checked in order · first match wins</text>
+
+  <g font-size="12" font-weight="700">
+    <rect x="414" y="512" width="5" height="146" rx="2" fill="#8a4b2f"/><text x="426" y="580" fill="#8a4b2f">Own</text><text x="426" y="595" fill="#8a4b2f">evidence</text>
+    <rect x="414" y="664" width="5" height="26" rx="2" fill="#c2410c"/><text x="426" y="682" fill="#c2410c">Suspicion</text>
+    <rect x="414" y="694" width="5" height="26" rx="2" fill="#7a5aa6"/><text x="426" y="712" fill="#7a5aa6">Custody</text>
+    <rect x="414" y="724" width="5" height="56" rx="2" fill="#15803d"/><text x="426" y="756" fill="#15803d">Efficiency</text>
+  </g>
+
+  <g font-size="13.5">
+    <g><circle cx="516" cy="525" r="11" fill="#5c3120"/><text x="516" y="530" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">1</text>
+      <text x="536" y="530" font-weight="700" fill="#2e2118">Thawed + spoiled</text><text x="700" y="530" fill="#8c7b6d">thaw square + pH spoiled</text>
+      <rect x="1030" y="514" width="116" height="22" rx="11" fill="#b91c1c"/><text x="1088" y="530" font-size="11.5" font-weight="700" text-anchor="middle" fill="#fff">WITHDRAW</text></g>
+    <g><circle cx="516" cy="555" r="11" fill="#5c3120"/><text x="516" y="560" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">2</text>
+      <text x="536" y="560" font-weight="700" fill="#2e2118">Expired</text><text x="700" y="560" fill="#8c7b6d">past its expiry date</text>
+      <rect x="1030" y="544" width="116" height="22" rx="11" fill="#b91c1c"/><text x="1088" y="560" font-size="11.5" font-weight="700" text-anchor="middle" fill="#fff">WITHDRAW</text></g>
+    <g><circle cx="516" cy="585" r="11" fill="#5c3120"/><text x="516" y="590" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">3</text>
+      <text x="536" y="590" font-weight="700" fill="#2e2118">Tampering</text><text x="700" y="590" fill="#8c7b6d">unregistered · strip swapped · cloned ID</text>
+      <rect x="1030" y="574" width="116" height="22" rx="11" fill="#b91c1c"/><text x="1088" y="590" font-size="11.5" font-weight="700" text-anchor="middle" fill="#fff">ESCALATE</text></g>
+    <g><circle cx="516" cy="615" r="11" fill="#5c3120"/><text x="516" y="620" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">4</text>
+      <text x="536" y="620" font-weight="700" fill="#2e2118">Thawed</text><text x="700" y="620" fill="#8c7b6d">thaw square triggered</text>
+      <rect x="1030" y="604" width="116" height="22" rx="11" fill="#c2410c"/><text x="1088" y="620" font-size="11.5" font-weight="700" text-anchor="middle" fill="#fff">INSPECT</text></g>
+    <g><circle cx="516" cy="645" r="11" fill="#5c3120"/><text x="516" y="650" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">5</text>
+      <text x="536" y="650" font-weight="700" fill="#2e2118">Spoiling</text><text x="700" y="650" fill="#8c7b6d">pH square reads spoiled</text>
+      <rect x="1030" y="634" width="116" height="22" rx="11" fill="#c2410c"/><text x="1088" y="650" font-size="11.5" font-weight="700" text-anchor="middle" fill="#fff">INSPECT</text></g>
+    <g><circle cx="516" cy="677" r="11" fill="#5c3120"/><text x="516" y="682" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">6</text>
+      <text x="536" y="682" font-weight="700" fill="#2e2118">Via suspect site</text><text x="700" y="682" fill="#8c7b6d">passed a site under investigation</text>
+      <rect x="1030" y="666" width="116" height="22" rx="11" fill="#c2410c"/><text x="1088" y="682" font-size="11.5" font-weight="700" text-anchor="middle" fill="#fff">HOLD</text></g>
+    <g><circle cx="516" cy="707" r="11" fill="#5c3120"/><text x="516" y="712" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">7</text>
+      <text x="536" y="712" font-weight="700" fill="#2e2118">Custody anomaly</text><text x="700" y="712" fill="#8c7b6d">skipped scan · moved back · GPS off</text>
+      <rect x="1030" y="696" width="116" height="22" rx="11" fill="#c2410c"/><text x="1088" y="712" font-size="11.5" font-weight="700" text-anchor="middle" fill="#fff">INSPECT</text></g>
+    <g><circle cx="516" cy="739" r="11" fill="#5c3120"/><text x="516" y="744" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">8</text>
+      <text x="536" y="744" font-weight="700" fill="#2e2118">Sell first</text><text x="700" y="744" fill="#8c7b6d">near expiry · pH borderline</text>
+      <rect x="1030" y="728" width="116" height="22" rx="11" fill="#15803d"/><text x="1088" y="744" font-size="11.5" font-weight="700" text-anchor="middle" fill="#fff">SELL FIRST</text></g>
+    <g><circle cx="516" cy="769" r="11" fill="#5c3120"/><text x="516" y="774" font-size="12" font-weight="700" text-anchor="middle" fill="#fff">9</text>
+      <text x="536" y="774" font-weight="700" fill="#2e2118">All clear</text><text x="700" y="774" fill="#8c7b6d">nothing unusual</text>
+      <rect x="1030" y="758" width="116" height="22" rx="11" fill="#15803d"/><text x="1088" y="774" font-size="11.5" font-weight="700" text-anchor="middle" fill="#fff">CONTINUE</text></g>
+  </g>
+
+  <!-- Plans → Safety rules -->
+  <line x1="1162" y1="635" x2="1176" y2="635" stroke="#8a4b2f" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <!-- ===== SAFETY RULES ===== -->
+  <rect x="1180" y="470" width="380" height="330" rx="14" fill="#fee2e2" stroke="#b91c1c" stroke-width="2.5"/>
+  <path d="M1234 490 L1276 506 V552 C1276 586 1257 606 1234 616 C1211 606 1192 586 1192 552 V506 Z" fill="#b91c1c"/>
+  <path d="M1215 552 L1230 567 L1255 537" stroke="#fff" stroke-width="7" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="1294" y="522" font-size="18" font-weight="700" fill="#b91c1c">Safety rules</text>
+  <text x="1294" y="545" font-size="13" fill="#5c3120">checked after every plan</text>
+  <text x="1294" y="564" font-size="13" fill="#5c3120">no plan can override them</text>
+  <g font-size="14" fill="#2e2118">
+    <circle cx="1206" cy="650" r="10" fill="#b91c1c"/><path d="M1201 645 L1211 655 M1211 645 L1201 655" stroke="#fff" stroke-width="2.5"/>
+    <text x="1226" y="655">Expired stock is never sold</text>
+    <circle cx="1206" cy="690" r="10" fill="#b91c1c"/><path d="M1201 685 L1211 695 M1211 685 L1201 695" stroke="#fff" stroke-width="2.5"/>
+    <text x="1226" y="695">Thawed + spoiled never returns to sale</text>
+    <circle cx="1206" cy="730" r="10" fill="#b91c1c"/><path d="M1201 725 L1211 735 M1211 725 L1201 735" stroke="#fff" stroke-width="2.5"/>
+    <text x="1226" y="735">Any open hold blocks sale</text>
+  </g>
+  <text x="1198" y="778" font-size="12.5" font-style="italic" fill="#8c7b6d">Every override is logged, so it can be audited</text>
+
+  <!-- Footer -->
+  <text x="40" y="852" font-size="14.5" fill="#5c3120"><tspan font-weight="700">Why BDI, not plain if/then:</tspan> it keeps beliefs about handlers across many packages, commits to an investigation that holds clean-looking stock,</text>
+  <text x="40" y="874" font-size="14.5" fill="#5c3120">changes its mind when an inspector reports, and remembers repeat offenders.</text>
+</svg>

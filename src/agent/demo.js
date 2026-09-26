@@ -1,14 +1,13 @@
-// Prints the agent's reasoning for the demo scenario.
-// Usage: node src/agent/demo.js [clear|confirmed]
+// Prints the agent's reasoning for the demo scenario (scans only; no inspections).
+// Usage: node src/agent/demo.js
 
 import { PeckAgent } from './agent.js';
 import { LOCATIONS, demoEvents } from './simulator.js';
 
-const outcome = process.argv[2] === 'confirmed' ? 'confirmed' : 'clear';
 const agent = new PeckAgent(LOCATIONS);
 const stamp = (time) => time.slice(5, 16).replace('T', ' ');
 
-for (const event of demoEvents(outcome)) {
+for (const event of demoEvents()) {
   const start = agent.trace.length;
   agent.handle(event);
   if (event.label) console.log(`\n> ${stamp(event.time)}  ${event.label}`);
@@ -22,3 +21,4 @@ const { packages, intentions } = agent.getState();
 console.log('\nFinal package status:');
 for (const p of packages) console.log(`    ${p.id.padEnd(8)} ${p.status}`);
 console.log(`Open intentions: ${intentions.map((i) => i.key).join(', ') || 'none'}`);
+console.log('Held stock stays held until an inspector records a result.');

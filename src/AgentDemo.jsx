@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { PeckAgent } from './agent/agent.js';
-import { ACTIONS, STAGES } from './agent/knowledge.js';
+import { ACTIONS, KNOWLEDGE, STAGES } from './agent/knowledge.js';
+import { SOURCE_TEXT } from './agent/sourceText.js';
 import { LOCATIONS, demoEvents } from './agent/simulator.js';
 import './AgentDemo.css';
 
@@ -59,11 +60,10 @@ function groupDecisions(decisions) {
 }
 
 export default function AgentDemo() {
-  const [outcome, setOutcome] = useState('clear');
   const [step, setStep] = useState(-1);
   const [manual, setManual] = useState([]);
 
-  const steps = useMemo(() => buildSteps(demoEvents(outcome)), [outcome]);
+  const steps = useMemo(() => buildSteps(demoEvents()), []);
   const { state, current } = useMemo(() => replay(steps, step, manual), [steps, step, manual]);
   const manualHere = manual.filter((m) => m.afterStep === step);
   const lastManual = manualHere.at(-1);
@@ -109,19 +109,6 @@ export default function AgentDemo() {
           <p className="subtitle">Cold-chain custody decisions for frozen chicken in Qatar</p>
         </div>
         <div className="controls">
-          <label className="outcome">
-            Inspector finds Wholesale B:
-            <select
-              value={outcome}
-              onChange={(e) => {
-                setOutcome(e.target.value);
-                setManual([]);
-              }}
-            >
-              <option value="clear">cleared</option>
-              <option value="confirmed">in violation</option>
-            </select>
-          </label>
           <button onClick={reset}>Reset</button>
           <button onClick={back} disabled={step < 0}>
             ◀ Back
@@ -261,9 +248,7 @@ function DecisionCard({ decision }) {
           {evidence.map((e) => `${e.packageId} (after ${nameOf(e.after)}, before ${nameOf(e.before)})`).join('; ')}
         </div>
       )}
-      {basis.length > 0 && (
-        <div className="basis">Based on: {[...new Set(basis.map((b) => b.source))].join(' · ')}</div>
-      )}
+      {basis.length > 0 && <BasisList keys={[...new Set(basis.map((b) => b.key))]} />}
     </article>
   );
 }
@@ -298,6 +283,7 @@ function InspectorPanel({ disabled, locations, packages, onSubmit }) {
   return (
     <form className="inspector" onSubmit={submit}>
       <h3>Record an inspection</h3>
+      <p className="inspector-hint">Held stock stays held until an inspection is recorded here.</p>
       <label>
         Inspect
         <select
@@ -360,6 +346,79 @@ function InspectorPanel({ disabled, locations, packages, onSubmit }) {
         Record inspection
       </button>
     </form>
+  );
+}
+
+const KIND_LABELS = {
+  regulation: 'Qatari law / regulation',
+  international: 'International standard',
+  guidance: 'Official guidance',
+  research: 'Research',
+  'foreign regulation': 'Foreign regulation',
+  policy: 'Policy setting',
+};
+
+// "Based on" sources as chips; clicking one shows the wording of that law or standard.
+function BasisList({ keys }) {
+  const [open, setOpen] = useState(null);
+  return (
+    <div className="basis">
+      <span>Based on:</span>
+      {keys.map((key) => (
+        <button
+          key={key}
+          type="button"
+          className={`basis-chip ${open === key ? 'open' : ''}`}
+          aria-expanded={open === key}
+          onClick={() => setOpen(open === key ? null : key)}
+        >
+          {SOURCE_TEXT[key]?.title ?? KNOWLEDGE[key]?.source ?? key}
+        </button>
+      ))}
+      {open && <SourcePanel knowledgeKey={open} onClose={() => setOpen(null)} />}
+    </div>
+  );
+}
+
+function SourcePanel({ knowledgeKey, onClose }) {
+  const entry = KNOWLEDGE[knowledgeKey] ?? {};
+  const text = SOURCE_TEXT[knowledgeKey];
+  return (
+    <div className="source-panel" role="region" aria-label="Source text">
+      <div className="source-head">
+        <span className={`source-kind kind-${(entry.kind ?? '').replace(' ', '-')}`}>
+          {KIND_LABELS[entry.kind] ?? entry.kind}
+        </span>
+        <button type="button" className="source-close" onClick={onClose} aria-label="Close source">
+          ×
+        </button>
+      </div>
+      {text?.quoteAr && (
+        <blockquote dir="rtl" lang="ar" className="source-quote arabic">
+          {text.quoteAr}
+        </blockquote>
+      )}
+      {text?.summary && <p className="source-summary">{text.summary}</p>}
+      {text?.quote ? (
+        <>
+          {text.translated && <div className="source-label">Unofficial English translation</div>}
+          <blockquote className="source-quote">{text.quote}</blockquote>
+        </>
+      ) : text?.summary ? null : (
+        <p className="source-note">
+          {entry.kind === 'policy'
+            ? `A PeckTag operating setting (value: ${entry.value}), not a law. It can be changed by the operator or regulator.`
+            : 'No quoted text stored for this source.'}
+        </p>
+      )}
+      {entry.source && <div className="source-ref">Source: {entry.source}</div>}
+      {entry.note && <div className="source-note">How PeckTag uses it: {entry.note}</div>}
+      {text?.url && (
+        <a className="source-link" href={text.url} target="_blank" rel="noopener noreferrer">
+          Open the source ↗
+        </a>
+      )}
+    </div>
   );
 }
 

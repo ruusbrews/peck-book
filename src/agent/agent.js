@@ -1,9 +1,10 @@
-import { ACTIONS, ACTION_BASIS, DESIRES, KNOWLEDGE, SELLABLE, SETTINGS, STAGES, phGrade } from './knowledge.js';
+import { ACTIONS, DESIRES, KNOWLEDGE, SELLABLE, SETTINGS, STAGES, phGrade } from './knowledge.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 // Plan library. The first plan whose context holds is chosen. Plans that act on a
 // package's own strip evidence come before plans that act on suspicion of a location.
+// `basis` lists the knowledge entries (laws, standards, research, policy) behind each plan.
 const PLANS = [
   {
     name: 'withdraw-spoiled',
@@ -12,6 +13,7 @@ const PLANS = [
       action: ACTIONS.WITHDRAW,
       reasons: [...why('thaw', 'ph'), 'Pulled from sale; lab analysis and any destruction are for the authority'],
       holds: ['evidence'],
+      basis: ['unfitForConsumption', 'temperatureViolationProcedure', 'pecktagPhGrades'],
     }),
   },
   {
@@ -21,6 +23,7 @@ const PLANS = [
       action: ACTIONS.WITHDRAW,
       reasons: [...why('expired'), 'Expired food is unfit for consumption (Qatar Law No. 8 of 1990, Art. 4(2))'],
       holds: ['evidence'],
+      basis: ['unfitForConsumption', 'stockRotation'],
     }),
   },
   {
@@ -30,17 +33,28 @@ const PLANS = [
       action: ACTIONS.ESCALATE,
       reasons: why('unregistered', 'stripReset', 'duplicateId'),
       holds: ['evidence'],
+      basis: ['dateLabelIntegrity', 'postCustomsOversight', 'inspectorPowers'],
     }),
   },
   {
     name: 'inspect-thawed',
     when: ({ scan }) => scan.thaw,
-    act: ({ why }) => ({ action: ACTIONS.INSPECT, reasons: why('thaw', 'ph'), holds: ['evidence'] }),
+    act: ({ why }) => ({
+      action: ACTIONS.INSPECT,
+      reasons: why('thaw', 'ph'),
+      holds: ['evidence'],
+      basis: ['temperatureViolationProcedure', 'frozenAbsoluteMaxC', 'refreezingThawed'],
+    }),
   },
   {
     name: 'inspect-spoilage',
     when: ({ scan }) => scan.ph === 'spoiled',
-    act: ({ why }) => ({ action: ACTIONS.INSPECT, reasons: why('ph'), holds: ['evidence'] }),
+    act: ({ why }) => ({
+      action: ACTIONS.INSPECT,
+      reasons: why('ph'),
+      holds: ['evidence'],
+      basis: ['unfitForConsumption', 'pecktagPhGrades'],
+    }),
   },
   {
     name: 'hold-investigated',
@@ -49,21 +63,31 @@ const PLANS = [
       action: ACTIONS.HOLD_FOR_INSPECTION,
       reasons: investigations.map((i) => `Passed through ${i.location}, which is under investigation`),
       holds: investigations.map((i) => i.key),
+      basis: ['temperatureViolationProcedure', 'suspectThreshold'],
     }),
   },
   {
     name: 'inspect-custody-anomaly',
     when: ({ facts }) => facts.has('gap') || facts.has('reverseFlow') || facts.has('gpsMismatch'),
-    act: ({ why }) => ({
+    act: ({ why, facts }) => ({
       action: ACTIONS.INSPECT,
       reasons: why('gap', 'reverseFlow', 'gpsMismatch'),
       holds: ['evidence'],
+      basis: ['transferPointRecords', 'postCustomsOversight', ...(facts.has('gpsMismatch') ? ['maxGpsDistanceKm'] : [])],
     }),
   },
   {
     name: 'sell-first',
     when: ({ facts }) => facts.has('ph') || facts.has('nearExpiry'),
-    act: ({ why }) => ({ action: ACTIONS.PRIORITIZE_SALE, reasons: why('ph', 'nearExpiry') }),
+    act: ({ why, facts }) => ({
+      action: ACTIONS.PRIORITIZE_SALE,
+      reasons: why('ph', 'nearExpiry'),
+      basis: [
+        'stockRotation',
+        ...(facts.has('nearExpiry') ? ['nearExpiryDays'] : []),
+        ...(facts.has('ph') ? ['pecktagPhGrades'] : []),
+      ],
+    }),
   },
   {
     name: 'continue',
@@ -148,6 +172,7 @@ export class PeckAgent {
         this.decide(time, packageId, {
           action: ACTIONS.RESCAN,
           reasons: ['Strip photo too unclear to read; retake it'],
+          basis: ['minReadConfidence'],
         }),
       ];
     }
@@ -255,6 +280,11 @@ export class PeckAgent {
             `${loc.incidents.length} package(s) first showed thaw after leaving ${loc.id}` +
               (loc.violations ? ` (repeat offender: ${loc.violations} confirmed violation(s))` : ''),
           ],
+          basis: [
+            'temperatureViolationProcedure',
+            'postCustomsOversight',
+            loc.violations ? 'repeatOffenderThreshold' : 'suspectThreshold',
+          ],
         },
         'location',
       ),
@@ -269,6 +299,7 @@ export class PeckAgent {
         this.decide(time, pkg.id, {
           action: ACTIONS.HOLD_FOR_INSPECTION,
           reasons: [`Passed through ${loc.id}, which is now under investigation`],
+          basis: ['temperatureViolationProcedure', 'suspectThreshold'],
         }),
       );
     }
@@ -293,6 +324,7 @@ export class PeckAgent {
           {
             action: ACTIONS.ESCALATE,
             reasons: [`Inspection confirmed cold-chain violations at ${loc.id}`],
+            basis: ['temperatureViolationProcedure', 'postCustomsOversight', 'inspectorPowers'],
             evidence: loc.incidents.map(({ packageId }) => ({ packageId, ...this.packages.get(packageId).breach })),
           },
           'location',
@@ -321,7 +353,9 @@ export class PeckAgent {
     this.note(time, 'belief', describeInspection(pkg.id, result, { note, inspector, measuredTempC }));
     if (result === 'fail') {
       const reasons = ['Failed inspection', ...(note ? [note] : [])];
-      return [this.decide(time, pkg.id, { action: ACTIONS.WITHDRAW, reasons })];
+      return [
+        this.decide(time, pkg.id, { action: ACTIONS.WITHDRAW, reasons, basis: ['unfitForConsumption', 'inspectorPowers'] }),
+      ];
     }
 
     pkg.holds.delete('evidence');
@@ -336,16 +370,19 @@ export class PeckAgent {
         reasons: [
           `Measured ${measuredTempC} C, warmer than the ${this.settings.frozenAbsoluteMaxC} C limit (Codex CXC 8-1976 s.4.7, s.4.9); bring back to ${this.settings.frozenStorageMaxC} C and re-check before release`,
         ],
+        basis: ['frozenAbsoluteMaxC', 'frozenStorageMaxC'],
       };
     } else if (pkg.holds.size) {
       proposal = {
         action: ACTIONS.HOLD_FOR_INSPECTION,
         reasons: ['Passed inspection but still linked to a location under investigation'],
+        basis: ['temperatureViolationProcedure'],
       };
     } else if (pkg.breach || last?.ph !== 'fresh') {
       proposal = {
         action: ACTIONS.PRIORITIZE_SALE,
         reasons: ['Passed inspection; quality is reduced, so sell before other stock'],
+        basis: ['stockRotation'],
       };
     } else {
       proposal = { action: ACTIONS.RELEASE, reasons: ['Passed inspection'] };
@@ -363,16 +400,19 @@ export class PeckAgent {
       forced = {
         action: ACTIONS.WITHDRAW,
         reasons: ['Safety rule: expired stock never returns to sale (Qatar Law No. 8 of 1990, Art. 4(2))'],
+        basis: ['unfitForConsumption'],
       };
     } else if (pkg.status === 'withdrawn' || (last?.thaw && last.ph === 'spoiled')) {
       forced = {
         action: ACTIONS.WITHDRAW,
         reasons: ['Safety rule: thawed-and-spoiled or withdrawn stock never returns to sale'],
+        basis: ['unfitForConsumption'],
       };
     } else if (SELLABLE.has(proposal.action) && pkg.holds.size) {
       forced = {
         action: ACTIONS.HOLD_FOR_INSPECTION,
         reasons: [`Safety rule: open holds (${[...pkg.holds].join(', ')}) block sale`],
+        basis: ['temperatureViolationProcedure'],
       };
     }
     if (!forced || forced.action === proposal.action) return proposal;
@@ -380,14 +420,14 @@ export class PeckAgent {
     return forced;
   }
 
-  decide(time, target, { action, reasons, evidence }, targetType = 'package') {
+  decide(time, target, { action, reasons, evidence, basis = [] }, targetType = 'package') {
     const pkg = targetType === 'package' ? this.packages.get(target) : null;
     if (pkg && action !== ACTIONS.RESCAN) {
       pkg.status = action === ACTIONS.WITHDRAW ? 'withdrawn' : SELLABLE.has(action) ? 'ok' : 'held';
     }
     this.note(time, 'decision', `${target} -> ${action}: ${reasons.join('; ')}`);
-    const basis = (ACTION_BASIS[action] ?? []).map((key) => ({ key, source: KNOWLEDGE[key].source ?? 'policy' }));
-    return { time, target, targetType, action, reasons, basis, ...(evidence && { evidence }) };
+    const sources = basis.map((key) => ({ key, source: KNOWLEDGE[key].source ?? 'PeckTag policy setting' }));
+    return { time, target, targetType, action, reasons, basis: sources, ...(evidence && { evidence }) };
   }
 
   investigationsFor(pkg) {

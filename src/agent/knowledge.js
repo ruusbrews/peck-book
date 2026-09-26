@@ -1,6 +1,7 @@
 // Domain knowledge the agent reasons with. Every entry records where it comes from:
-//   regulation - a law or official standard
-//   guidance   - official advice from an authority (not binding law)
+//   regulation    - binding law or technical regulation
+//   international - international standard (FAO/WHO Codex): guidance, not Qatari law
+//   guidance      - official advice from an authority (not binding law)
 //   research   - a published study; the real PeckTag strip must be calibrated in the lab
 //   policy     - an operating choice, not a fact; a prototype default the operator can change
 // `verified: true` means the team read the cited primary source (checked Sep 2026).
@@ -12,14 +13,14 @@ export const KNOWLEDGE = {
   // --- Regulation and guidance ---
   frozenStorageMaxC: {
     value: -18,
-    kind: 'regulation',
+    kind: 'international',
     verified: true,
     source: 'Codex CXC 8-1976, Code of Practice for Quick Frozen Foods, s.2 and s.4.6',
     note: 'Quick frozen food must be kept at -18 C or colder at all points in the cold chain. MOPH Qatar public guidance (31 Mar 2026) repeats -18 C for frozen products.',
   },
   frozenAbsoluteMaxC: {
     value: -12,
-    kind: 'regulation',
+    kind: 'international',
     verified: true,
     source: 'Codex CXC 8-1976, s.4.7 and s.4.9',
     note: 'Short rises above -18 C are tolerated in distribution and retail, but never warmer than -12 C in the warmest package. The thaw square should trigger well before 0 C to respect this.',
@@ -30,13 +31,6 @@ export const KNOWLEDGE = {
     verified: true,
     source: 'Qatar Technical Regulation QS 10050:2025 Shelf Life of Food Products (Minister of Commerce and Industry Decision No. 102 of 2025, 29 Sep 2025), s.4/5 and Annexes 2-3; replaces GSO 150-1:2013 and GSO 150-2:2013 in Qatar',
     note: 'The mandatory table lists chilled meat and poultry but not frozen poultry. Producers and importers are legally responsible for the declared shelf life and the authority may demand the scientific justification. GSO 150 (12 months for frozen chicken in the 2007 edition) is now only a guidance reference, per the note on the s.4/5/6 table.',
-  },
-  chilledPoultryShelfLifeDays: {
-    value: 7,
-    kind: 'regulation',
-    verified: true,
-    source: 'QS 10050:2025, s.4/5/1 (chilled meat and poultry, 0-5 C): poultry whole or cut, with or without bone, maximum 7 days from slaughter',
-    note: 'Explains the 2021 Qatar case where chilled meat was relabelled as frozen to stretch its life.',
   },
   dateLabelIntegrity: {
     value: [
@@ -72,7 +66,7 @@ export const KNOWLEDGE = {
     value: 'Officers may enter premises and vehicles, check records, take samples and temporarily seize suspected food; destruction follows analysis',
     kind: 'regulation',
     verified: true,
-    source: 'Qatar Law No. 8 of 1990, Art. 19-21',
+    source: 'Qatar Law No. 8 of 1990, Art. 19, 20 and 23',
     note: 'The agent escalates with evidence; seizure and destruction stay with the authority.',
   },
   refreezingThawed: {
@@ -84,28 +78,28 @@ export const KNOWLEDGE = {
   },
   temperatureViolationProcedure: {
     value: 'identify and sort affected loads, suspend delivery and sale, assess safety and quality, inform the supplier and chain, notify the competent authority if safety is compromised',
-    kind: 'regulation',
+    kind: 'international',
     verified: true,
     source: 'Codex CXC 8-1976, s.5.3',
     note: 'The basis for the HOLD, INSPECT and ESCALATE actions.',
   },
   stockRotation: {
     value: 'first in, first out, or shortest durability date first',
-    kind: 'regulation',
+    kind: 'international',
     verified: true,
     source: 'Codex CXC 8-1976, s.4.6 and s.4.9',
     note: 'The basis for PRIORITIZE_SALE of stock close to expiry.',
   },
   transferPointRecords: {
     value: 'check product temperature when received or dispatched, keep records longer than the shelf life',
-    kind: 'regulation',
+    kind: 'international',
     verified: true,
     source: 'Codex CXC 8-1976, s.4.8 and s.5.4',
     note: 'The basis for scanning at every change of custody.',
   },
   indicatorsOnRetailPacks: {
     value: 'caution',
-    kind: 'regulation',
+    kind: 'international',
     verified: true,
     source: 'Codex CXC 8-1976, Annex s.4.4',
     note: 'Codex notes reluctance to use time-temperature indicators on retail packs (surface placement, possible conflict with durability dates) but supports them on cartons and pallets. Be ready for this question.',
@@ -115,7 +109,7 @@ export const KNOWLEDGE = {
   tvbnLegalLimit: {
     value: 15,
     unit: 'mg TVB-N / 100 g',
-    kind: 'regulation',
+    kind: 'foreign regulation',
     verified: true,
     source: 'China GB 2707-2016, National Food Safety Standard for Fresh and Frozen Livestock and Poultry Products, s.3.3 Table 2 (read in the unofficial USDA FAS translation, GAIN CH19010, 2019)',
     note: 'A foreign compliance limit, not a Qatar/GCC rule. Useful as a reference point for calibrating the pH square.',
@@ -142,14 +136,14 @@ export const KNOWLEDGE = {
   pecktagPhGrades: {
     value: {
       fresh: { min: 5.7, max: 6.1 },
-      borderline: { min: 6.2, max: 6.8 },
-      spoiled: { above: 7.0 },
+      borderline: { above: 6.1, max: 6.8 },
+      spoiled: { above: 6.8 },
     },
     unit: 'pH',
     kind: 'research',
     verified: false,
-    source: 'PeckTag team strip design: purple sweet potato anthocyanin indicator (add the supporting paper)',
-    note: 'Readings in the gaps (6.1-6.2 and 6.8-7.0) are graded into the more cautious category; readings below 5.7 count as fresh. Confirm with the team and with lab calibration.',
+    source: 'Miao et al. (2023), Exopolysaccharide riclin and anthocyanin-based composite colorimetric indicator film for food freshness monitoring, Carbohydrate Polymers 314, 120882: purple sweet potato anthocyanin in PVA/riclin film',
+    note: 'Ranges set by the PeckTag team from this film. Paper citation checked; its full text (and so these exact ranges) was not accessible. Readings below 5.7 count as fresh.',
   },
   irreversibleThawIndicators: {
     value: 'colour changes as the sample warms towards 0 C and does not revert when refrozen',
@@ -192,8 +186,7 @@ export const KNOWLEDGE = {
   },
 };
 
-// Grades a numeric pH reading using the PeckTag ranges. Values in the gaps between the
-// published ranges go to the more cautious (higher) grade.
+// Grades a numeric pH reading using the PeckTag ranges.
 export function phGrade(pH) {
   const { fresh, borderline } = KNOWLEDGE.pecktagPhGrades.value;
   if (pH <= fresh.max) return 'fresh';
@@ -213,16 +206,6 @@ export const ACTIONS = {
   RELEASE: 'RELEASE',
   WITHDRAW: 'WITHDRAW',
   ESCALATE: 'ESCALATE_TO_AUTHORITY',
-};
-
-// The knowledge entries that justify each action, for display next to a decision.
-export const ACTION_BASIS = {
-  [ACTIONS.PRIORITIZE_SALE]: ['stockRotation'],
-  [ACTIONS.INSPECT]: ['temperatureViolationProcedure', 'unfitForConsumption'],
-  [ACTIONS.HOLD_FOR_INSPECTION]: ['temperatureViolationProcedure'],
-  [ACTIONS.WITHDRAW]: ['unfitForConsumption', 'temperatureViolationProcedure', 'inspectorPowers'],
-  [ACTIONS.ESCALATE]: ['temperatureViolationProcedure', 'dateLabelIntegrity', 'postCustomsOversight', 'inspectorPowers'],
-  [ACTIONS.RESCAN]: ['minReadConfidence'],
 };
 
 // Actions that let a package keep moving toward sale.

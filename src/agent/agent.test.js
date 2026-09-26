@@ -24,12 +24,22 @@ const register = (packageId, expiry = '2027-03-01') => ({
 });
 const scan = (packageId, location, strip = {}) => ({ type: 'scan', packageId, location, time: T, ...clean, ...strip });
 
+// An inspector's result, recorded after the scripted scans.
+const inspect = (fields) => ({ type: 'inspection', time: '2026-10-05T09:00:00Z', ...fields });
+
 describe('demo scenario', () => {
-  test('clean stock from a suspect wholesaler is held, then released when it is cleared', () => {
-    const events = demoEvents('clear');
+  test('without an inspection, held stock stays held', () => {
+    const { agent } = run(demoEvents());
+    expect(demoEvents().some((e) => e.type === 'inspection')).toBe(false);
+    for (const id of ['PKG-001', 'PKG-002', 'PKG-003', 'PKG-004', 'PKG-X99']) {
+      expect(agent.packages.get(id).status).toBe('held');
+    }
+    expect([...agent.intentions.keys()]).toEqual(['investigate:wholesale-b']);
+  });
+
+  test('clean stock from a suspect wholesaler is held, then released when an inspector clears it', () => {
     const agent = new PeckAgent(LOCATIONS);
-    const beforeInspection = events.findIndex((e) => e.type === 'inspection');
-    const early = events.slice(0, beforeInspection).flatMap((e) => agent.handle(e));
+    const early = demoEvents().flatMap((e) => agent.handle(e));
 
     expect(lastFor(early, 'wholesale-b')).toBe(ACTIONS.INSPECT);
     expect(lastFor(early, 'PKG-003')).toBe(ACTIONS.HOLD_FOR_INSPECTION);
@@ -39,7 +49,11 @@ describe('demo scenario', () => {
     expect(lastFor(early, 'PKG-006')).toBe(ACTIONS.CONTINUE);
     expect(lastFor(early, 'PKG-X99')).toBe(ACTIONS.ESCALATE);
 
-    const late = events.slice(beforeInspection).flatMap((e) => agent.handle(e));
+    const late = [
+      inspect({ location: 'wholesale-b', result: 'clear' }),
+      inspect({ packageId: 'PKG-001', result: 'pass' }),
+      inspect({ packageId: 'PKG-002', result: 'fail' }),
+    ].flatMap((e) => agent.handle(e));
     expect(lastFor(late, 'PKG-003')).toBe(ACTIONS.RELEASE);
     expect(lastFor(late, 'PKG-001')).toBe(ACTIONS.PRIORITIZE_SALE);
     expect(lastFor(late, 'PKG-002')).toBe(ACTIONS.WITHDRAW);
@@ -47,7 +61,11 @@ describe('demo scenario', () => {
   });
 
   test('a confirmed violation is escalated with evidence and holds stay in place', () => {
-    const { agent, decisions } = run(demoEvents('confirmed'));
+    const { agent, decisions } = run([
+      ...demoEvents(),
+      inspect({ location: 'wholesale-b', result: 'confirmed' }),
+      inspect({ packageId: 'PKG-001', result: 'pass' }),
+    ]);
     const escalation = decisions.find((d) => d.target === 'wholesale-b' && d.action === ACTIONS.ESCALATE);
 
     expect(escalation.evidence.map((e) => e.packageId)).toEqual(['PKG-001', 'PKG-002']);
@@ -223,7 +241,7 @@ describe('expiry', () => {
 });
 
 describe('pH grades', () => {
-  test('grades follow the PeckTag ranges, with gaps going to the more cautious grade', () => {
+  test('grades follow the PeckTag ranges (fresh up to 6.1, borderline up to 6.8, spoiled above)', () => {
     expect([5.5, 5.9, 6.1].map(phGrade)).toEqual(['fresh', 'fresh', 'fresh']);
     expect([6.15, 6.5, 6.8].map(phGrade)).toEqual(['borderline', 'borderline', 'borderline']);
     expect([6.9, 7.0, 7.4].map(phGrade)).toEqual(['spoiled', 'spoiled', 'spoiled']);
@@ -233,5 +251,25 @@ describe('pH grades', () => {
     const { decisions } = run([register('P1'), { ...scan('P1', 'hamad-port'), ph: undefined, phValue: 6.5 }]);
     expect(lastFor(decisions, 'P1')).toBe(ACTIONS.PRIORITIZE_SALE);
     expect(decisions.at(-1).reasons[0]).toBe('pH square reads borderline (pH 6.5)');
+  });
+});
+
+describe('sources per plan', () => {
+  const keys = (d) => d.basis.map((b) => b.key);
+
+  test('each decision cites the sources behind its own plan', () => {
+    const { decisions } = run(demoEvents());
+    const find = (target, action) => decisions.find((d) => d.target === target && d.action === action);
+
+    expect(keys(find('PKG-001', ACTIONS.INSPECT))).toContain('frozenAbsoluteMaxC');
+    expect(keys(find('PKG-003', ACTIONS.HOLD_FOR_INSPECTION))).toEqual(['temperatureViolationProcedure', 'suspectThreshold']);
+    expect(keys(find('PKG-X99', ACTIONS.ESCALATE))).toContain('dateLabelIntegrity');
+    expect(keys(find('PKG-005', ACTIONS.PRIORITIZE_SALE))).toEqual(['stockRotation', 'nearExpiryDays']);
+    expect(keys(find('PKG-006', ACTIONS.CONTINUE))).toEqual([]);
+  });
+
+  test('every cited key exists in the knowledge base', () => {
+    const { decisions } = run([...demoEvents(), inspect({ location: 'wholesale-b', result: 'confirmed' })]);
+    for (const d of decisions) for (const b of d.basis) expect(b.source).toBeTruthy();
   });
 });

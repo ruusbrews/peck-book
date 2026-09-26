@@ -25,9 +25,10 @@ const scan = (packageId, location, time, strip = {}) => ({
   ...strip,
 });
 
-// `warehouseBOutcome` is 'clear' or 'confirmed' and decides how the investigation ends.
+// The scripted scans only. Inspection results are never scripted: held stock stays held
+// until an inspector records a result (the dashboard form, or an 'inspection' event).
 // Events with `quiet` are routine and hidden in the printed demo; `label` narrates a step.
-export function demoEvents(warehouseBOutcome = 'clear') {
+export function demoEvents() {
   const ids = ['PKG-001', 'PKG-002', 'PKG-003', 'PKG-004', 'PKG-005', 'PKG-006'];
 
   const arrival = ids.flatMap((id) => [
@@ -49,11 +50,6 @@ export function demoEvents(warehouseBOutcome = 'clear') {
     quiet: true,
   }));
   toWholesale[0].label = 'PKG-001..004 received by Wholesale B, PKG-005..006 by Wholesale A, all clean';
-
-  const outcomeNote =
-    warehouseBOutcome === 'clear'
-      ? 'Freezer fault on 2 Oct was logged and repaired; no other stock affected'
-      : 'Evidence of thawing and refreezing stock';
 
   return [
     ...arrival,
@@ -81,28 +77,6 @@ export function demoEvents(warehouseBOutcome = 'clear') {
     {
       ...scan('PKG-X99', 'shop-1', at(4, 12)),
       label: 'Unknown package PKG-X99 scanned at Shop 1',
-    },
-    {
-      type: 'inspection',
-      location: 'wholesale-b',
-      result: warehouseBOutcome,
-      note: outcomeNote,
-      time: at(5, 9),
-      label: `Inspector visits Wholesale B - result: ${warehouseBOutcome}`,
-    },
-    {
-      type: 'inspection',
-      packageId: 'PKG-001',
-      result: 'pass',
-      time: at(5, 14),
-      label: 'PKG-001 inspected - passes',
-    },
-    {
-      type: 'inspection',
-      packageId: 'PKG-002',
-      result: 'fail',
-      time: at(5, 14, 30),
-      label: 'PKG-002 inspected - fails',
     },
   ];
 }
